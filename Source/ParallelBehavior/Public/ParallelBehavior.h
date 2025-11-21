@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogParallelBehavior, Log, All);
+
 class FParallelBehaviorModule : public IModuleInterface
 {
 public:
