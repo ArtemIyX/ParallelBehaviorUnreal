@@ -168,7 +168,7 @@ public:
 	 * @param Id The unique identifier of the behavior tree instance to remove.
 	 * @return true if a tree with the given ID was found and removed, false otherwise.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Manage")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Manage")
 	bool RemoveTree(FName Id);
 
 	/**
@@ -177,7 +177,7 @@ public:
 	 * Stops every running tree, destroys their components, and clears the internal array.
 	 * Useful for cleanup on death, level transition, or when fully resetting AI logic.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Manager")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Manager")
 	void RemoveAllTrees();
 
 	/**
