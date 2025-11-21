@@ -69,7 +69,7 @@ public:
  *
  * Useful for layered AI (e.g. combat + locomotion + emotion + dialogue all running simultaneously).
  * Each tree has its own Blackboard instance to avoid key conflicts.
- */	
+ */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class PARALLELBEHAVIOR_API UParallelBehaviorManagerComponent : public UActorComponent
 {
@@ -79,6 +79,7 @@ public:
 	UParallelBehaviorManagerComponent();
 
 protected:
+	/** Default behaviors */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", DisplayName="Behaviors")
 	TArray<FParallelBehaviorSetup> ParallelBehaviorDefaults;
 
@@ -92,34 +93,90 @@ protected:
 	UFUNCTION()
 	void RunDefaultTrees();
 
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-
-	/** Get currently running runtime instances (editor/debug only) */
+	/**
+	 * Returns a const reference to the array of all currently running parallel behavior trees.
+	 * 
+	 * This is a lightweight accessor meant for debugging, inspection, or iteration over active trees.
+	 * The returned array contains FParallelBehaviorRuntime structs with runtime data (ID, component, setup, etc.).
+	 * 
+	 * @return Const reference to the internal array of running behavior trees.
+	 */
 	const TArray<FParallelBehaviorRuntime>& GetRunningTrees() const { return RunningTrees; }
 
-	/** Add and start a new parallel behavior tree at runtime */
+	/**
+	 * Adds and starts a new parallel behavior tree instance based on the provided setup.
+	 * 
+	 * Only allowed on authority (server). The tree will be instantiated, initialized with the given
+	 * setup (BehaviorTree asset, Blackboard overrides, etc.), and immediately started.
+	 * A unique FName ID is automatically generated unless one is specified in the setup.
+	 * 
+	 * @param InSetup Configuration data defining the behavior tree asset, optional custom ID, 
+	 *                blackboard initialization values, and other runtime parameters.
+	 * @return true if the tree was successfully created and started, false otherwise 
+	 *         (e.g. invalid asset, duplicate ID, or failure to spawn component).
+	 */
 	UFUNCTION(BlueprintAuthorityOnly, BlueprintCallable, Category = "Manage")
 	bool AddTree(const FParallelBehaviorSetup& InSetup);
 
+	/**
+	 * Retrieves the Behavior Tree component associated with the specified identifier.
+	 * 
+	 * Only allowed on authority. Searches through all managed parallel behavior tree instances.
+	 * 
+	 * @param InId The unique identifier of the behavior tree instance to retrieve.
+	 * @return Pointer to the UBehaviorTreeComponent if found, nullptr if no tree with that ID exists.
+	 */
 	UFUNCTION(BlueprintAuthorityOnly, BlueprintCallable, Category = "Manage")
 	UBehaviorTreeComponent* GetTree(const FName& InId) const;
 
+	/**
+	 * Stops execution of the behavior tree instance with the given ID.
+	 * 
+	 * Immediately aborts the running tree. All active tasks are canceled, but the component and
+	 * blackboard data are preserved until explicitly removed.
+	 * Safe to call on non-existent IDs (no-op).
+	 * 
+	 * @param InId The unique identifier of the behavior tree instance to stop.
+	 */
 	UFUNCTION(BlueprintAuthorityOnly, BlueprintCallable, Category = "Manage")
 	void StopTree(const FName& InId);
 
+	/**
+	 * Restarts the behavior tree instance with the given ID.
+	 * 
+	 * Equivalent to calling StopTree() followed by starting the tree again from its root node.
+	 * The blackboard is typically reset (depending on setup flags), and all tasks begin fresh.
+	 * Useful for resetting AI state without removing/re-adding the tree entirely.
+	 * 
+	 * @param InId The unique identifier of the behavior tree instance to restart.
+	 */
 	UFUNCTION(BlueprintAuthorityOnly, BlueprintCallable, Category = "Manage")
 	void RestartTree(const FName& InId);
 
-	/** Remove a running tree by ID */
+	/**
+	 * Removes and destroys the behavior tree instance with the specified ID.
+	 * 
+	 * Stops the tree (if running), destroys its UBehaviorTreeComponent, and removes it from the
+	 * internal tracking array. Can be called from anywhere (client/server), but typically used
+	 * after authority has stopped/restarted as needed.
+	 * 
+	 * @param Id The unique identifier of the behavior tree instance to remove.
+	 * @return true if a tree with the given ID was found and removed, false otherwise.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Manage")
 	bool RemoveTree(FName Id);
 
-	/** Remove all running trees */
+	/**
+	 * Removes and destroys all currently managed parallel behavior tree instances.
+	 * 
+	 * Stops every running tree, destroys their components, and clears the internal array.
+	 * Useful for cleanup on death, level transition, or when fully resetting AI logic.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Manager")
 	void RemoveAllTrees();
 
